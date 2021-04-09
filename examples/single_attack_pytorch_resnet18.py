@@ -40,7 +40,7 @@ def main() -> None:
         0.5,
         1.0,
     ]
-    raw_advs, clipped_advs, success = attack(fmodel, images, labels, epsilons=epsilons)
+    raw_advs, clipped_advs, success = attack(model=fmodel, model1=None, inputs=images, criterion=labels, epsilons=epsilons)
 
     # calculate and report the robust accuracy (the accuracy of the model when
     # it is attacked)

@@ -53,9 +53,10 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
     def run(
         self,
-        model: Model,
+        model1: Model,
+        model2: Model,
         inputs: T,
-        criterion: Union[Misclassification, TargetedMisclassification, T],
+        criterion: Union[Misclassification, TargetedMisclassification, T, T],
         *,
         epsilon: float,
         **kwargs: Any,
@@ -68,14 +69,16 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         # perform a gradient ascent (targeted attack) or descent (untargeted attack)
         if isinstance(criterion_, Misclassification):
             gradient_step_sign = 1.0
-            classes = criterion_.labels
+            classes1 = criterion_.labels1
+            classes2 = criterion_.labels2
         elif hasattr(criterion_, "target_classes"):
             gradient_step_sign = -1.0
             classes = criterion_.target_classes  # type: ignore
         else:
             raise ValueError("unsupported criterion")
 
-        loss_fn = self.get_loss_fn(model, classes)
+        loss_fn1 = self.get_loss_fn(model1, classes1)
+        loss_fn2 = self.get_loss_fn(model2, classes2)
 
         if self.abs_stepsize is None:
             stepsize = self.rel_stepsize * epsilon
@@ -84,16 +87,18 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
         if self.random_start:
             x = self.get_random_start(x0, epsilon)
-            x = ep.clip(x, *model.bounds)
+            x = ep.clip(x, *model1.bounds)
         else:
             x = x0
 
         for _ in range(self.steps):
-            _, gradients = self.value_and_grad(loss_fn, x)
-            gradients = self.normalize(gradients, x=x, bounds=model.bounds)
-            x = x + gradient_step_sign * stepsize * gradients
+            _, gradients1 = self.value_and_grad(loss_fn1, x)
+            _, gradients2 = self.value_and_grad(loss_fn2, x)
+            gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
+            gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
+            x = x + gradient_step_sign * stepsize * gradients1
             x = self.project(x, x0, epsilon)
-            x = ep.clip(x, *model.bounds)
+            x = ep.clip(x, *model1.bounds)
 
         return restore_type(x)
 

@@ -101,9 +101,10 @@ class Misclassification(Criterion):
         labels: Tensor with labels of the unperturbed inputs ``(batch,)``.
     """
 
-    def __init__(self, labels: Any):
+    def __init__(self, labels1: Any, labels2: Any):
         super().__init__()
-        self.labels: ep.Tensor = ep.astensor(labels)
+        self.labels1: ep.Tensor = ep.astensor(labels1)
+        self.labels2: ep.Tensor = ep.astensor(labels2)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.labels!r})"
