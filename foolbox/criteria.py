@@ -114,8 +114,8 @@ class Misclassification(Criterion):
         del perturbed, outputs
 
         classes = outputs_.argmax(axis=-1)
-        assert classes.shape == self.labels.shape
-        is_adv = classes != self.labels
+        assert classes.shape == self.labels1.shape
+        is_adv = classes != self.labels1
         return restore_type(is_adv)
 
 
