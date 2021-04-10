@@ -21,7 +21,7 @@ class L1FastGradientAttack(L1BaseGradientDescent):
 
     def run(
         self,
-        model1: Model,
+        model: Model,
         inputs: T,
         criterion: Union[Misclassification, TargetedMisclassification, T],
         *,
@@ -32,7 +32,7 @@ class L1FastGradientAttack(L1BaseGradientDescent):
             raise ValueError("unsupported criterion")
 
         return super().run(
-            model1=model1, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
+            model=model, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
         )
 
 
@@ -50,7 +50,7 @@ class L2FastGradientAttack(L2BaseGradientDescent):
 
     def run(
         self,
-        model1: Model,
+        model: Model,
         inputs: T,
         criterion: Union[Misclassification, TargetedMisclassification, T],
         *,
@@ -61,7 +61,7 @@ class L2FastGradientAttack(L2BaseGradientDescent):
             raise ValueError("unsupported criterion")
 
         return super().run(
-            model1=model1, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
+            model=model, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
         )
 
 
@@ -79,7 +79,7 @@ class LinfFastGradientAttack(LinfBaseGradientDescent):
 
     def run(
         self,
-        model1: Model,
+        model: Model,
         inputs: T,
         criterion: Union[Misclassification, TargetedMisclassification, T],
         *,
@@ -90,5 +90,5 @@ class LinfFastGradientAttack(LinfBaseGradientDescent):
             raise ValueError("unsupported criterion")
 
         return super().run(
-            model1=model1, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
+            model=model, inputs=inputs, criterion=criterion, epsilon=epsilon, **kwargs
         )
