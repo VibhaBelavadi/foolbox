@@ -7,7 +7,7 @@ the robust accuracy.
 import torchvision.models as models
 import eagerpy as ep
 from foolbox import PyTorchModel, accuracy, samples, Misclassification
-from foolbox.attacks import LinfPGD
+from foolbox.attacks import LinfPGD, L2PGD
 
 
 def main() -> None:
@@ -24,7 +24,8 @@ def main() -> None:
     print(f"clean accuracy:  {clean_acc * 100:.1f} %")
 
     # apply the attack
-    attack = LinfPGD()
+    # attack = LinfPGD()
+    attack = L2PGD()
     """epsilons = [
         0.0,
         0.0002,
@@ -41,7 +42,9 @@ def main() -> None:
         1.0,
     ]"""
     epsilons = [0.001]
-    raw_advs, clipped_advs, success = attack(model1=fmodel, model2=fmodel, inputs=images, criterion=Misclassification(labels1=labels, labels2=labels), epsilons=epsilons)
+    raw_advs, clipped_advs, success = attack(model1=fmodel, model2=fmodel,
+                                             inputs=images,
+                                             criterion=Misclassification(labels1=labels, labels2=labels), epsilons=epsilons)
 
     # calculate and report the robust accuracy (the accuracy of the model when
     # it is attacked)

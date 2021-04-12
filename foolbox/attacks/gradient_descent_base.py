@@ -96,9 +96,14 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             _, gradients2 = self.value_and_grad(loss_fn2, x)
             gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
             gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
-            x = x + gradient_step_sign * stepsize * (gradients1 + gradients2)
+            gradients_max = ep.maximum(gradients1, gradients2)
+            g_same_dir = gradients1.sign() + gradients2.sign()
+            # g_opp_dir = gradients1.sign() - gradients2.sign()
+            # x = x + gradient_step_sign * stepsize * (gradients1 + gradients2)
+            x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model1.bounds)
+            del gradients_max, gradients2, gradients1, g_same_dir
 
         return restore_type(x)
 
