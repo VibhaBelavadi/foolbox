@@ -94,16 +94,24 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         for _ in range(self.steps):
             _, gradients1 = self.value_and_grad(loss_fn1, x)
             _, gradients2 = self.value_and_grad(loss_fn2, x)
-            gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
-            gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
-            gradients_max = ep.maximum(gradients1, gradients2)
-            g_same_dir = gradients1.sign() + gradients2.sign()
-            # g_opp_dir = gradients1.sign() - gradients2.sign()
+            # label flip: only adding the two gradients
+            # gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
+            # gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
             # x = x + gradient_step_sign * stepsize * (gradients1 + gradients2)
-            x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
+
+            g_same_dir = gradients1.sign() + gradients2.sign()
+            g_opp_dir = gradients1.sign() - gradients2.sign()
+            gradients_max = ep.maximum(gradients1, gradients2)
+            gradients_min = ep.minimum(gradients1, gradients2)
+            final_gradients = gradients_min * g_same_dir
+            final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
+            x = x + gradient_step_sign * stepsize * final_gradients
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model1.bounds)
-            del gradients_max, gradients2, gradients1, g_same_dir
+
+            # this approach will cause unbounded error: since gradients_max*g_same_dir is not bound by lp norm
+            # x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
+            del gradients_max, gradients2, gradients1, g_same_dir, g_opp_dir, gradients_min
 
         return restore_type(x)
 
@@ -113,7 +121,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
     @abstractmethod
     def normalize(
-        self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
+            self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
     ) -> ep.Tensor:
         ...
 
@@ -182,7 +190,7 @@ class L1BaseGradientDescent(BaseGradientDescent):
         return x0 + epsilon * r
 
     def normalize(
-        self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
+            self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
     ) -> ep.Tensor:
         return normalize_lp_norms(gradients, p=1)
 
@@ -199,7 +207,7 @@ class L2BaseGradientDescent(BaseGradientDescent):
         return x0 + epsilon * r
 
     def normalize(
-        self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
+            self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
     ) -> ep.Tensor:
         return normalize_lp_norms(gradients, p=2)
 
@@ -214,7 +222,7 @@ class LinfBaseGradientDescent(BaseGradientDescent):
         return x0 + ep.uniform(x0, x0.shape, -epsilon, epsilon)
 
     def normalize(
-        self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
+            self, gradients: ep.Tensor, *, x: ep.Tensor, bounds: Bounds
     ) -> ep.Tensor:
         return gradients.sign()
 
