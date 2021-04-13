@@ -22,12 +22,18 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 50,
         random_start: bool = True,
+        follow_dir: Optional[bool] = False,
+        max_val: Optional[bool] = None,
+        rand_div: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            follow_dir = follow_dir,
+            max_val=max_val,
+            rand_div=rand_div,
         )
 
 
@@ -48,12 +54,18 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 50,
         random_start: bool = True,
+        follow_dir: Optional[bool] = False,
+        max_val: Optional[bool] = None,
+        rand_div: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            follow_dir=follow_dir,
+            max_val=max_val,
+            rand_div=rand_div,
         )
 
 
@@ -74,10 +86,16 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 40,
         random_start: bool = True,
+        follow_dir: Optional[bool] = False,
+        max_val: Optional[bool] = None,
+        rand_div: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            follow_dir=follow_dir,
+            max_val=max_val,
+            rand_div=rand_div,
         )

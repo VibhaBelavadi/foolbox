@@ -27,11 +27,17 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         abs_stepsize: Optional[float] = None,
         steps: int,
         random_start: bool,
+        follow_dir: Optional[bool] = False,
+        max_val: Optional[bool] = None,
+        rand_div: Optional[bool] = None,
     ):
         self.rel_stepsize = rel_stepsize
         self.abs_stepsize = abs_stepsize
         self.steps = steps
         self.random_start = random_start
+        self.follow_dir = follow_dir
+        self.max_val = max_val
+        self.rand_div = rand_div
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -94,24 +100,47 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         for _ in range(self.steps):
             _, gradients1 = self.value_and_grad(loss_fn1, x)
             _, gradients2 = self.value_and_grad(loss_fn2, x)
-            # label flip: only adding the two gradients
+            # label flip: when only adding the two gradients
             # gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
             # gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
             # x = x + gradient_step_sign * stepsize * (gradients1 + gradients2)
+            # This approach is wrong since (gradients1 + gradients2)
+            # is not bound by lp norm
 
-            g_same_dir = gradients1.sign() + gradients2.sign()
-            g_opp_dir = gradients1.sign() - gradients2.sign()
-            gradients_max = ep.maximum(gradients1, gradients2)
-            gradients_min = ep.minimum(gradients1, gradients2)
-            final_gradients = gradients_min * g_same_dir
+            # this approach is wrong since gradients_max*g_same_dir
+            # is not bound by lp norm
+            # x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
+
+            # check if we need to follow along direction
+            if self.follow_dir:
+                g_same_dir = gradients1.sign() + gradients2.sign()
+                g_opp_dir = gradients1.sign() - gradients2.sign()
+            else:
+                g_same_dir, g_opp_dir = 1, 1
+
+            # get final gradients
+            if self.max_val is None:
+                final_gradients = gradients1 + gradients2
+            elif self.max_val is False:
+                final_gradients = ep.minimum(gradients1, gradients2)
+            else:
+                final_gradients = ep.maximum(gradients1, gradients2)
+
+            # include the option of intializing with random noise in opposite dir
+            if self.rand_div is None or self.rand_div == 0:
+                final_gradients = final_gradients * g_same_dir
+            else:
+                rand_init = self.get_random_start(x0, epsilon)
+                rand_init = ep.clip(rand_init, *model1.bounds)/self.rand_div
+                final_gradients = final_gradients * g_same_dir + rand_init * g_opp_dir
+
+            # normalize the updated gradient before feeding it to the model
             final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
             x = x + gradient_step_sign * stepsize * final_gradients
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model1.bounds)
 
-            # this approach will cause unbounded error: since gradients_max*g_same_dir is not bound by lp norm
-            # x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
-            del gradients_max, gradients2, gradients1, g_same_dir, g_opp_dir, gradients_min
+            del final_gradients, gradients2, gradients1, g_same_dir, g_opp_dir
 
         return restore_type(x)
 
