@@ -70,6 +70,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         raise_if_kwargs(kwargs)
         x0, restore_type = ep.astensor_(inputs)
         criterion_ = get_criterion(criterion)
+        classes1, classes2 = None, None
         del inputs, criterion, kwargs
 
         # perform a gradient ascent (targeted attack) or descent (untargeted attack)
@@ -97,9 +98,12 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         else:
             x = x0
 
+        # Tried a variant where the gradients are plainly added after normalization: explained why it was wrong
+        # What if I: 1. normalize g1 and g2 2. add/max/min 3. project alpha*_ into lp norm 4. add to x 5. bound x
         for _ in range(self.steps):
             _, gradients1 = self.value_and_grad(loss_fn1, x)
             _, gradients2 = self.value_and_grad(loss_fn2, x)
+
             # label flip: when only adding the two gradients
             # gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
             # gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
@@ -118,7 +122,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             else:
                 g_same_dir, g_opp_dir = 1, 1
 
-            # get final gradients
+            # version1: adding of two gradients
+            # version 2 and 3: get the same/opposite direction elements of two tensors
             if self.max_val is None:
                 final_gradients = gradients1 + gradients2
             elif self.max_val is False:
@@ -126,12 +131,19 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             else:
                 final_gradients = ep.maximum(gradients1, gradients2)
 
-            # include the option of intializing with random noise in opposite dir
-            if self.rand_div is None or self.rand_div == 0:
+            # intializing with random noise in opposite dir
+            # There is another variant that needs to be tried
+            if self.rand_div is None:
                 final_gradients = final_gradients * g_same_dir
             else:
                 rand_init = self.get_random_start(x0, epsilon)
                 rand_init = ep.clip(rand_init, *model1.bounds)/self.rand_div
+                """
+                # Try this
+                # final_gradients = final_gradients * g_same_dir
+                # final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
+                # x = x + gradient_step_sign * stepsize * final_gradients + rand_init * g_opp_dir
+                """
                 final_gradients = final_gradients * g_same_dir + rand_init * g_opp_dir
 
             # normalize the updated gradient before feeding it to the model
