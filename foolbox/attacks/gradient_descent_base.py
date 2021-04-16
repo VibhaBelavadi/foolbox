@@ -100,71 +100,77 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         else:
             x = x0
 
-        # Tried a variant where the gradients are plainly added after normalization: explained why it was wrong
-        # What if I: 1. normalize g1 and g2 2. add/max/min 3. project alpha*_ into lp norm 4. add to x 5. bound x
+        if self.max_val is None:
+            x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2)
+        else:
+            x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2)
+
+        return restore_type(x)
+
+    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, gradient_step_sign=1):
+
         for _ in range(self.steps):
-            g_same_dir, g_opp_dir = 1, 1
-            _, gradients1 = self.value_and_grad(loss_fn1, x)
-            _, gradients2 = self.value_and_grad(loss_fn2, x)
+            same_dir, opp_dir = 1, 1
+            _, gradients_1 = self.value_and_grad(loss_fn1, x)
+            _, gradients_2 = self.value_and_grad(loss_fn2, x)
 
-            if self.variant == 'v1':
-                gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
-                gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
+            gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
+            gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
+            final_gradients = gradients_1 + gradients_2
 
-            # label flip: when only adding the two gradients
-            # gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
-            # gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
-            # x = x + gradient_step_sign * stepsize * (gradients1 + gradients2)
-            # This approach is wrong since (gradients1 + gradients2)
-            # is not bound by lp norm
-
-            # this approach is wrong since gradients_max*g_same_dir
-            # is not bound by lp norm
-            # x = x + gradient_step_sign * stepsize * g_same_dir * gradients_max
-
-            # check if we need to follow along direction
             if self.follow_dir:
-                g_same_dir = gradients1.sign() + gradients2.sign()
-                g_opp_dir = gradients1.sign() - gradients2.sign()
+                same_dir = gradients_1.sign() + gradients_2.sign()
+                opp_dir = gradients_1.sign() - gradients_2.sign()
 
-            # version1: adding of two gradients
-            # version 2 and 3: get the same/opposite direction elements of two tensors
-            if self.max_val is None:
-                final_gradients = gradients1 + gradients2
-            elif self.max_val is False:
-                final_gradients = ep.minimum(gradients1, gradients2)
-            else:
-                final_gradients = ep.maximum(gradients1, gradients2)
+            final_gradients = final_gradients*same_dir
 
-            # intializing with random noise in opposite dir
-            # There is another variant that needs to be tried
             if self.rand_div is None:
-                final_gradients = final_gradients * g_same_dir
                 rand_init = 0
             else:
                 rand_init = self.get_random_start(x0, epsilon)
-                rand_init = ep.clip(rand_init, *model1.bounds)/self.rand_div
-                """
-                # Try this
-                # final_gradients = final_gradients * g_same_dir
-                # final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
-                # x = x + gradient_step_sign * stepsize * final_gradients + rand_init * g_opp_dir
-                """
+                rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
 
-            # normalize the updated gradient before/after feeding it to the model
-            if self.variant == 'v1':
-                x = x + gradient_step_sign * stepsize * final_gradients + rand_init * g_opp_dir
-            else:
-                final_gradients = final_gradients * g_same_dir + rand_init * g_opp_dir
-                final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
-                x = x + gradient_step_sign * stepsize * final_gradients
-
+            x = x + gradient_step_sign * stepsize * final_gradients + rand_init * opp_dir
             x = self.project(x, x0, epsilon)
-            x = ep.clip(x, *model1.bounds)
+            x = ep.clip(x, *model_1.bounds)
 
-            del final_gradients, gradients2, gradients1, g_same_dir, g_opp_dir
+            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
 
-        return restore_type(x)
+        return x
+
+    def minmax_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2,
+                          model_2, gradient_step_sign=1):
+
+        for _ in range(self.steps):
+            same_dir, opp_dir = 1, 1
+            _, gradients_1 = self.value_and_grad(loss_fn1, x)
+            _, gradients_2 = self.value_and_grad(loss_fn2, x)
+
+            gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
+            gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
+
+            if self.max_val is False:
+                final_gradients = ep.minimum(gradients_1, gradients_2)
+            else:
+                final_gradients = ep.maximum(gradients_1, gradients_2)
+
+            if self.follow_dir:
+                same_dir = gradients_1.sign() + gradients_2.sign()
+                opp_dir = gradients_1.sign() - gradients_2.sign()
+
+            if self.rand_div is None:
+                rand_init = 0
+            else:
+                rand_init = self.get_random_start(x0, epsilon)
+                rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
+
+            x = x0 + gradient_step_sign * stepsize * final_gradients * same_dir + rand_init * opp_dir
+            x = self.project(x, x0, epsilon)
+            x = ep.clip(x, *model_1.bounds)
+
+            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
+
+        return x
 
     @abstractmethod
     def get_random_start(self, x0: ep.Tensor, epsilon: float) -> ep.Tensor:
