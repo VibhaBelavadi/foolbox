@@ -30,6 +30,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         follow_dir: Optional[bool] = False,
         max_val: Optional[bool] = None,
         rand_div: Optional[bool] = None,
+        variant: Optional[str] = 'v2'
     ):
         self.rel_stepsize = rel_stepsize
         self.abs_stepsize = abs_stepsize
@@ -38,6 +39,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.follow_dir = follow_dir
         self.max_val = max_val
         self.rand_div = rand_div
+        self.variant = variant
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -101,8 +103,13 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         # Tried a variant where the gradients are plainly added after normalization: explained why it was wrong
         # What if I: 1. normalize g1 and g2 2. add/max/min 3. project alpha*_ into lp norm 4. add to x 5. bound x
         for _ in range(self.steps):
+            g_same_dir, g_opp_dir = 1, 1
             _, gradients1 = self.value_and_grad(loss_fn1, x)
             _, gradients2 = self.value_and_grad(loss_fn2, x)
+
+            if self.variant == 'v1':
+                gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
+                gradients2 = self.normalize(gradients2, x=x, bounds=model2.bounds)
 
             # label flip: when only adding the two gradients
             # gradients1 = self.normalize(gradients1, x=x, bounds=model1.bounds)
@@ -119,8 +126,6 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             if self.follow_dir:
                 g_same_dir = gradients1.sign() + gradients2.sign()
                 g_opp_dir = gradients1.sign() - gradients2.sign()
-            else:
-                g_same_dir, g_opp_dir = 1, 1
 
             # version1: adding of two gradients
             # version 2 and 3: get the same/opposite direction elements of two tensors
@@ -135,6 +140,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             # There is another variant that needs to be tried
             if self.rand_div is None:
                 final_gradients = final_gradients * g_same_dir
+                rand_init = 0
             else:
                 rand_init = self.get_random_start(x0, epsilon)
                 rand_init = ep.clip(rand_init, *model1.bounds)/self.rand_div
@@ -144,11 +150,15 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
                 # final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
                 # x = x + gradient_step_sign * stepsize * final_gradients + rand_init * g_opp_dir
                 """
-                final_gradients = final_gradients * g_same_dir + rand_init * g_opp_dir
 
-            # normalize the updated gradient before feeding it to the model
-            final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
-            x = x + gradient_step_sign * stepsize * final_gradients
+            # normalize the updated gradient before/after feeding it to the model
+            if self.variant == 'v1':
+                x = x + gradient_step_sign * stepsize * final_gradients + rand_init * g_opp_dir
+            else:
+                final_gradients = final_gradients * g_same_dir + rand_init * g_opp_dir
+                final_gradients = self.normalize(final_gradients, x=x, bounds=model1.bounds)
+                x = x + gradient_step_sign * stepsize * final_gradients
+
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model1.bounds)
 
