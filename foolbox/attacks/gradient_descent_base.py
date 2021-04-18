@@ -30,7 +30,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         follow_dir: Optional[bool] = False,
         max_val: Optional[bool] = None,
         rand_div: Optional[bool] = None,
-        variant: Optional[str] = 'v2'
+        variant: Optional[str] = 'v2',
+        max_opp_dir: Optional[bool] = None,
     ):
         self.rel_stepsize = rel_stepsize
         self.abs_stepsize = abs_stepsize
@@ -40,6 +41,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.max_val = max_val
         self.rand_div = rand_div
         self.variant = variant
+        self.max_opp_dir = max_opp_dir
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -101,13 +103,20 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             x = x0
 
         if self.max_val is None:
-            x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2, gradient_step_sign)
+            if self.max_opp_dir is None:
+                x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1,
+                                        loss_fn2, model2, gradient_step_sign)
+            else:
+                x = self.sum_label_flip_min_max(x, x0, epsilon, stepsize, loss_fn1, model1,
+                                                loss_fn2, model2, gradient_step_sign)
         else:
-            x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2, gradient_step_sign)
+            x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1,
+                                       loss_fn2, model2, gradient_step_sign)
 
         return restore_type(x)
 
-    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, gradient_step_sign=1.0):
+    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1,
+                       loss_fn2, model_2, gradient_step_sign=1.0):
         for _ in range(self.steps):
             same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
@@ -131,6 +140,35 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
                 rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
 
             x = x + gradient_step_sign * stepsize * final_gradients + rand_init * opp_dir
+
+            x = self.project(x, x0, epsilon)
+            x = ep.clip(x, *model_1.bounds)
+
+            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
+
+        return x
+
+    def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1,
+                               loss_fn2, model_2, gradient_step_sign=1.0):
+        for _ in range(self.steps):
+            same_dir, opp_dir = 1, 1
+            _, gradients_1 = self.value_and_grad(loss_fn1, x)
+            _, gradients_2 = self.value_and_grad(loss_fn2, x)
+
+            gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
+            gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
+
+            final_gradients = gradients_1 + gradients_2
+
+            if self.follow_dir:
+                same_dir = gradients_1.sign() + gradients_2.sign()
+                opp_dir = gradients_1.sign() - gradients_2.sign()
+
+            final_gradients = final_gradients*same_dir
+            if self.max_opp_dir is True:
+                x = x + gradient_step_sign * stepsize * final_gradients + ep.maximum(gradients_1, gradients_2)*opp_dir
+            else:
+                x = x + gradient_step_sign * stepsize * final_gradients + ep.minimum(gradients_1, gradients_2)*opp_dir
 
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
