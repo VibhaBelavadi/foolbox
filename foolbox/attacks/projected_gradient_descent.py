@@ -33,7 +33,7 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
-            follow_dir = follow_dir,
+            follow_dir=follow_dir,
             max_val=max_val,
             rand_div=rand_div,
             variant=variant,
