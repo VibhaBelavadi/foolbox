@@ -127,7 +127,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
             if self.follow_dir:
                 same_dir = gradients_1.sign() + gradients_2.sign()
+                same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
                 opp_dir = gradients_1.sign() - gradients_2.sign()
+                opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
 
             final_gradients = final_gradients*same_dir
 
@@ -159,7 +161,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             final_gradients = gradients_1 + gradients_2
 
             same_dir = gradients_1.sign() + gradients_2.sign()
+            same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
             opp_dir = gradients_1.sign() - gradients_2.sign()
+            opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
 
             if self.max_opp_dir is True:
                 x = x + gradient_step_sign * stepsize * (final_gradients*same_dir +
@@ -193,7 +197,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
             if self.follow_dir:
                 same_dir = gradients_1.sign() + gradients_2.sign()
+                same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
                 opp_dir = gradients_1.sign() - gradients_2.sign()
+                opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
 
             if self.rand_div is None:
                 rand_init = 0
