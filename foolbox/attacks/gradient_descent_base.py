@@ -144,14 +144,13 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
 
-            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
+            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir, rand_init
 
         return x
 
     def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
                                gradient_step_sign=1.0):
         for _ in range(self.steps):
-            same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
 
@@ -166,11 +165,13 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
 
             if self.max_opp_dir is True:
-                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir +
-                                                         ep.maximum(gradients_1, gradients_2)*opp_dir)
+                max_grad = ep.maximum(gradients_1, gradients_2)
+                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir + max_grad*opp_dir)
+                del max_grad
             else:
-                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir +
-                                                         ep.minimum(gradients_1, gradients_2)*opp_dir)
+                min_grad = ep.minimum(gradients_1, gradients_2)
+                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir + min_grad*opp_dir)
+                del min_grad
 
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
@@ -211,7 +212,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
 
-            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
+            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir, rand_init
 
         return x
 
