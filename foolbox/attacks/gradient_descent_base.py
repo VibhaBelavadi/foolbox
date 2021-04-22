@@ -27,6 +27,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         abs_stepsize: Optional[float] = None,
         steps: int,
         random_start: bool,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
         follow_dir: Optional[bool] = False,
         max_val: Optional[bool] = None,
         rand_div: Optional[bool] = None,
@@ -42,6 +44,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.rand_div = rand_div
         self.variant = variant
         self.max_opp_dir = max_opp_dir
+        self.weight1 = weight1,
+        self.weight2 = weight2,
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -102,19 +106,31 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         else:
             x = x0
 
+        if self.weight1 is None:
+            weight1 = 1
+        else:
+            weight1 = self.weight1[0]
+
+        if self.weight2 is None:
+            weight2 = 1
+        else:
+            weight2 = self.weight2[0]
+
         if self.max_val is None:
             if self.max_opp_dir is None:
                 x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                        gradient_step_sign)
+                                        gradient_step_sign, weight1, weight2)
             else:
                 x = self.sum_label_flip_min_max(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                                gradient_step_sign)
+                                                gradient_step_sign, weight1, weight2)
         else:
             x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2, gradient_step_sign)
 
         return restore_type(x)
 
-    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, gradient_step_sign=1.0):
+    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, gradient_step_sign=1.0,
+                       weight_1=1.0, weight_2=1.0):
+
         for _ in range(self.steps):
             same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
@@ -123,7 +139,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
             gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
 
-            final_gradients = gradients_1 + gradients_2
+            final_gradients = weight_1*gradients_1 + weight_2*gradients_2
 
             if self.follow_dir:
                 same_dir = gradients_1.sign() + gradients_2.sign()
@@ -149,7 +165,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         return x
 
     def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
-                               gradient_step_sign=1.0):
+                               gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
         for _ in range(self.steps):
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
@@ -157,7 +173,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
             gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
 
-            final_gradients = gradients_1 + gradients_2
+            final_gradients = weight_1*gradients_1 + weight_2*gradients_2
 
             same_dir = gradients_1.sign() + gradients_2.sign()
             same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask

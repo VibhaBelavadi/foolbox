@@ -27,6 +27,8 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
         rand_div: Optional[bool] = None,
         variant: Optional[str] = 'v2',
         max_opp_dir: Optional[bool] = None,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
@@ -38,6 +40,8 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
             rand_div=rand_div,
             variant=variant,
             max_opp_dir=max_opp_dir,
+            weight1=weight1,
+            weight2=weight2,
         )
 
 
@@ -63,6 +67,8 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
         rand_div: Optional[bool] = None,
         variant: Optional[str] = 'v2',
         max_opp_dir: Optional[bool] = None,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
@@ -74,6 +80,8 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
             rand_div=rand_div,
             variant=variant,
             max_opp_dir=max_opp_dir,
+            weight1=weight1,
+            weight2=weight2,
         )
 
 
@@ -94,6 +102,8 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 40,
         random_start: bool = True,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
         follow_dir: Optional[bool] = False,
         max_val: Optional[bool] = None,
         rand_div: Optional[bool] = None,
@@ -110,4 +120,6 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
             rand_div=rand_div,
             variant=variant,
             max_opp_dir=max_opp_dir,
+            weight1=weight1,
+            weight2=weight2,
         )
