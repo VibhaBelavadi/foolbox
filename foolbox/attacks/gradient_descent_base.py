@@ -27,6 +27,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         abs_stepsize: Optional[float] = None,
         steps: int,
         random_start: bool,
+        att_def_avg: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
         follow_dir: Optional[bool] = False,
@@ -39,6 +40,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.abs_stepsize = abs_stepsize
         self.steps = steps
         self.random_start = random_start
+        self.att_def_avg = att_def_avg
         self.follow_dir = follow_dir
         self.max_val = max_val
         self.rand_div = rand_div
@@ -71,6 +73,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         model2: Model,
         inputs: T,
         criterion: Union[Misclassification, TargetedMisclassification, T],
+        model3: Optional[Model] = None,
         *,
         epsilon: float,
         **kwargs: Any,
@@ -78,7 +81,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         raise_if_kwargs(kwargs)
         x0, restore_type = ep.astensor_(inputs)
         criterion_ = get_criterion(criterion)
-        classes1, classes2 = None, None
+        classes1, classes2, classes3, loss_fn3 = None, None, None, None
         del inputs, criterion, kwargs
 
         # perform a gradient ascent (targeted attack) or descent (untargeted attack)
@@ -86,6 +89,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             gradient_step_sign = 1.0
             classes1 = criterion_.labels1
             classes2 = criterion_.labels2
+            classes3 = criterion_.labels3
         elif hasattr(criterion_, "target_classes"):
             gradient_step_sign = -1.0
             classes = criterion_.target_classes  # type: ignore
@@ -94,6 +98,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
         loss_fn1 = self.get_loss_fn(model1, classes1)
         loss_fn2 = self.get_loss_fn(model2, classes2)
+
+        if classes3 is not None:
+            loss_fn3 = self.get_loss_fn(model3, classes3)
 
         if self.abs_stepsize is None:
             stepsize = self.rel_stepsize * epsilon
@@ -119,7 +126,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         if self.max_val is None:
             if self.max_opp_dir is None:
                 x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                        gradient_step_sign, weight1, weight2)
+                                        loss_fn3, model3, gradient_step_sign, weight1, weight2)
             else:
                 x = self.sum_label_flip_min_max(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
                                                 gradient_step_sign, weight1, weight2)
@@ -128,18 +135,28 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
         return restore_type(x)
 
-    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, gradient_step_sign=1.0,
-                       weight_1=1.0, weight_2=1.0):
+    def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, loss_fn3=None,
+                       model_3=None, gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
 
         for _ in range(self.steps):
             same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
-
             gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
             gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
 
-            final_gradients = weight_1*gradients_1 + weight_2*gradients_2
+            if loss_fn3 is not None:
+                _, gradients_3 = self.value_and_grad(loss_fn3, x)
+                gradients_3 = self.normalize(gradients_3, x=x, bounds=model_3.bounds)
+                if self.att_def_avg == 'att':
+                    final_gradients = weight_1*(gradients_3+gradients_1)/2 + weight_2*gradients_2
+                elif self.att_def_avg == 'def':
+                    final_gradients = weight_2*(gradients_3+gradients_2)/2 + weight_1*gradients_1
+                else:
+                    final_gradients = gradients_3+gradients_2+gradients_1
+                del gradients_3
+            else:
+                final_gradients = weight_1*gradients_1 + weight_2*gradients_2
 
             if self.follow_dir:
                 same_dir = gradients_1.sign() + gradients_2.sign()

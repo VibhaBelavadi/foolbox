@@ -13,9 +13,9 @@ from ..devutils import atleast_kd
 
 from ..distances import Distance
 
-
 T = TypeVar("T")
 CriterionType = TypeVar("CriterionType", bound=Criterion)
+
 
 # TODO: support manually specifying early_stop in __call__
 class Attack(ABC):
@@ -50,6 +50,7 @@ class Attack(ABC):
         model2: Model,
         inputs: T,
         criterion: Any,
+        model3: Optional[Model] = None,
         *,
         epsilons: Union[Sequence[Union[float, None]], float, None],
         **kwargs: Any,
@@ -203,7 +204,8 @@ class FixedEpsilonAttack(AttackWithDistance):
 
     @abstractmethod
     def run(
-        self, model1: Model, model2: Model, inputs: T, criterion: Any, *, epsilon: float, **kwargs: Any
+        self, model1: Model, model2: Model, inputs:T, criterion: Any, model3: Optional[Model] = None, *,
+            epsilon: float, **kwargs: Any,
     ) -> T:
         """Runs the attack and returns perturbed inputs.
 
@@ -243,6 +245,7 @@ class FixedEpsilonAttack(AttackWithDistance):
         model2: Model,
         inputs: T,
         criterion: Any,
+        model3: Optional[Model] = None,
         *,
         epsilons: Union[Sequence[Union[float, None]], float, None],
         **kwargs: Any,
@@ -275,7 +278,7 @@ class FixedEpsilonAttack(AttackWithDistance):
         xpcs = []
         success = []
         for epsilon in real_epsilons:
-            xp = self.run(model1, model2, x, criterion, epsilon=epsilon, **kwargs)
+            xp = self.run(model1, model2, x, criterion, model3, epsilon=epsilon, **kwargs)
 
             # clip to epsilon because we don't really know what the attack returns;
             # alternatively, we could check if the perturbation is at most epsilon,
