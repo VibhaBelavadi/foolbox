@@ -46,8 +46,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.rand_div = rand_div
         self.variant = variant
         self.max_opp_dir = max_opp_dir
-        self.weight1 = weight1,
-        self.weight2 = weight2,
+        self.weight1 = weight1
+        self.weight2 = weight2
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -116,12 +116,12 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         if self.weight1 is None:
             weight1 = 1
         else:
-            weight1 = self.weight1[0]
+            weight1 = self.weight1
 
         if self.weight2 is None:
             weight2 = 1
         else:
-            weight2 = self.weight2[0]
+            weight2 = self.weight2
 
         if self.max_val is None:
             if self.max_opp_dir is None:
@@ -138,7 +138,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
     def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, loss_fn3=None,
                        model_3=None, gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
 
-        for _ in range(self.steps):
+        for num_steps in range(self.steps):
             same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
@@ -183,7 +183,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
     def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
                                gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
-        for _ in range(self.steps):
+
+        for num_steps in range(self.steps):
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
 
@@ -216,7 +217,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
     def minmax_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
                           gradient_step_sign=1.0):
 
-        for _ in range(self.steps):
+        for num_steps in range(self.steps):
             same_dir, opp_dir = 1, 1
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
