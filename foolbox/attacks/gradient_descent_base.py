@@ -31,10 +31,6 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         att_def_avg_fourth: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
-        #follow_dir: Optional[bool] = False,
-        #max_val: Optional[bool] = None,
-        #rand_div: Optional[bool] = None,
-        #max_opp_dir: Optional[bool] = None,
     ):
         self.rel_stepsize = rel_stepsize
         self.abs_stepsize = abs_stepsize
@@ -44,10 +40,6 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.att_def_avg_fourth = att_def_avg_fourth
         self.weight1 = weight1
         self.weight2 = weight2
-        #self.follow_dir = follow_dir
-        #self.max_val = max_val
-        #self.rand_div = rand_div
-        #self.max_opp_dir = max_opp_dir
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
@@ -133,26 +125,12 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
                                 loss_fn3, model3, loss_fn4, model4, gradient_step_sign, weight1, weight2)
 
-        # TODO: Remove this obselete piece of code
-        """
-        if self.max_val is None:
-            if self.max_opp_dir is None:
-                x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                loss_fn3, model3, loss_fn4, model4, gradient_step_sign, weight1, weight2)
-            else:
-                x = self.sum_label_flip_min_max(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                                gradient_step_sign, weight1, weight2)
-        else:
-            x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2, gradient_step_sign)
-        """
         return restore_type(x)
 
     def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, loss_fn3=None,
                        model_3=None, loss_fn4=None, model_4=None, gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
 
         for num_steps in range(self.steps):
-            # TODO: remove this obselete code
-            # same_dir, opp_dir = 1, 1
 
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
@@ -221,107 +199,13 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             else:
                 final_gradients = weight_1*gradients_1 + weight_2*gradients_2
 
-            # TODO: remove this obselete code reference
-            """
-            # find elements of gradients_1 and gradients_2 in the same direction
-            if self.follow_dir:
-                same_dir = gradients_1.sign() + gradients_2.sign()
-                same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
-                opp_dir = gradients_1.sign() - gradients_2.sign()
-                opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
-
-            final_gradients = final_gradients * same_dir
-
-            # normalize random initialization in the opposite direction
-            if self.rand_div is None:
-                rand_init = 0
-            else:
-                rand_init = self.get_random_start(x0, epsilon)
-                rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
-
-            x = x + gradient_step_sign * stepsize * final_gradients + rand_init * opp_dir
-            """
-
             x = x + gradient_step_sign * stepsize * final_gradients
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
 
-            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir, rand_init
+            del final_gradients, gradients_2, gradients_1
 
         return x
-
-    # Note: OBSELETE code....no longer used
-    # TODO: Remove references to all the variables in this obselete code
-    """
-    def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
-                               gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
-
-        for num_steps in range(self.steps):
-            _, gradients_1 = self.value_and_grad(loss_fn1, x)
-            _, gradients_2 = self.value_and_grad(loss_fn2, x)
-
-            gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
-            gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
-
-            final_gradients = weight_1*gradients_1 + weight_2*gradients_2
-
-            same_dir = gradients_1.sign() + gradients_2.sign()
-            same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
-            opp_dir = gradients_1.sign() - gradients_2.sign()
-            opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
-
-            if self.max_opp_dir is True:
-                max_grad = ep.maximum(gradients_1, gradients_2)
-                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir + max_grad*opp_dir)
-                del max_grad
-            else:
-                min_grad = ep.minimum(gradients_1, gradients_2)
-                x = x + gradient_step_sign * stepsize * (final_gradients*same_dir + min_grad*opp_dir)
-                del min_grad
-
-            x = self.project(x, x0, epsilon)
-            x = ep.clip(x, *model_1.bounds)
-
-            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir
-
-        return x
-
-    def minmax_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
-                          gradient_step_sign=1.0):
-
-        for num_steps in range(self.steps):
-            same_dir, opp_dir = 1, 1
-            _, gradients_1 = self.value_and_grad(loss_fn1, x)
-            _, gradients_2 = self.value_and_grad(loss_fn2, x)
-
-            gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
-            gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
-
-            if self.max_val is False:
-                final_gradients = ep.minimum(gradients_1, gradients_2)
-            else:
-                final_gradients = ep.maximum(gradients_1, gradients_2)
-
-            if self.follow_dir:
-                same_dir = gradients_1.sign() + gradients_2.sign()
-                same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
-                opp_dir = gradients_1.sign() - gradients_2.sign()
-                opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
-
-            if self.rand_div is None:
-                rand_init = 0
-            else:
-                rand_init = self.get_random_start(x0, epsilon)
-                rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
-
-            x = x + gradient_step_sign * stepsize * final_gradients * same_dir + rand_init * opp_dir
-            x = self.project(x, x0, epsilon)
-            x = ep.clip(x, *model_1.bounds)
-
-            del final_gradients, gradients_2, gradients_1, same_dir, opp_dir, rand_init
-
-        return x
-    """
 
     @abstractmethod
     def get_random_start(self, x0: ep.Tensor, epsilon: float) -> ep.Tensor:

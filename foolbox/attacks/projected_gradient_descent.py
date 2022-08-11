@@ -26,10 +26,6 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
         att_def_avg_fourth: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
-        #follow_dir: Optional[bool] = False,
-        #max_val: Optional[bool] = None,
-        #rand_div: Optional[bool] = None,
-        #max_opp_dir: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
@@ -40,10 +36,6 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
             att_def_avg_fourth=att_def_avg_fourth,
             weight1=weight1,
             weight2=weight2,
-            #follow_dir=follow_dir,
-            #max_val=max_val,
-            #rand_div=rand_div,
-            #max_opp_dir=max_opp_dir,
         )
 
 
@@ -68,10 +60,6 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
         att_def_avg_fourth: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
-        #follow_dir: Optional[bool] = False,
-        #max_val: Optional[bool] = None,
-        #rand_div: Optional[bool] = None,
-        #max_opp_dir: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
@@ -82,10 +70,6 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
             att_def_avg_fourth=att_def_avg_fourth,
             weight1=weight1,
             weight2=weight2,
-            #follow_dir=follow_dir,
-            #max_val=max_val,
-            #rand_div=rand_div,
-            #max_opp_dir=max_opp_dir,
         )
 
 
@@ -110,10 +94,6 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
         att_def_avg_fourth: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
-        #follow_dir: Optional[bool] = False,
-        #max_val: Optional[bool] = None,
-        #rand_div: Optional[bool] = None,
-        #max_opp_dir: Optional[bool] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
@@ -124,8 +104,4 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
             att_def_avg_fourth=att_def_avg_fourth,
             weight1=weight1,
             weight2=weight2,
-            #follow_dir=follow_dir,
-            #max_val=max_val,
-            #rand_div=rand_div,
-            #max_opp_dir=max_opp_dir,
         )
