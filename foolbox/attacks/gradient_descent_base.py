@@ -34,7 +34,6 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         follow_dir: Optional[bool] = False,
         max_val: Optional[bool] = None,
         rand_div: Optional[bool] = None,
-        variant: Optional[str] = 'v2',
         max_opp_dir: Optional[bool] = None,
     ):
         self.rel_stepsize = rel_stepsize
@@ -46,7 +45,6 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.follow_dir = follow_dir
         self.max_val = max_val
         self.rand_div = rand_div
-        self.variant = variant
         self.max_opp_dir = max_opp_dir
         self.weight1 = weight1
         self.weight2 = weight2
@@ -89,6 +87,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         del inputs, criterion, kwargs
 
         # perform a gradient ascent (targeted attack) or descent (untargeted attack)
+        # our criterion is Misclassification
         if isinstance(criterion_, Misclassification):
             gradient_step_sign = 1.0
             classes1 = criterion_.labels1
@@ -131,23 +130,30 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         else:
             weight2 = self.weight2
 
+        x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
+                                loss_fn3, model3, loss_fn4, model4, gradient_step_sign, weight1, weight2)
+
+        # TODO: Remove this obselete piece of code
+        """
         if self.max_val is None:
             if self.max_opp_dir is None:
                 x = self.sum_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
-                                        loss_fn3, model3, loss_fn4, model4, gradient_step_sign, weight1, weight2)
+                                loss_fn3, model3, loss_fn4, model4, gradient_step_sign, weight1, weight2)
             else:
                 x = self.sum_label_flip_min_max(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2,
                                                 gradient_step_sign, weight1, weight2)
         else:
             x = self.minmax_label_flip(x, x0, epsilon, stepsize, loss_fn1, model1, loss_fn2, model2, gradient_step_sign)
-
+        """
         return restore_type(x)
 
     def sum_label_flip(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2, loss_fn3=None,
                        model_3=None, loss_fn4=None, model_4=None, gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
 
         for num_steps in range(self.steps):
-            same_dir, opp_dir = 1, 1
+            # TODO: remove this obselete code
+            # same_dir, opp_dir = 1, 1
+
             _, gradients_1 = self.value_and_grad(loss_fn1, x)
             _, gradients_2 = self.value_and_grad(loss_fn2, x)
             gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
@@ -187,34 +193,46 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             elif loss_fn3 is not None and loss_fn4 is None:
                 _, gradients_3 = self.value_and_grad(loss_fn3, x)
                 gradients_3 = self.normalize(gradients_3, x=x, bounds=model_3.bounds)
+
                 if self.att_def_avg_third == 'att':
                     final_gradients = weight_1*(gradients_3+gradients_1)/2 + weight_2*gradients_2
+
                 elif self.att_def_avg_third == 'def':
                     final_gradients = weight_2*(gradients_3+gradients_2)/2 + weight_1*gradients_1
+
                 else:
                     final_gradients = gradients_3+gradients_2+gradients_1
+
                 del gradients_3
             elif loss_fn4 is not None and loss_fn3 is None:
                 _, gradients_4 = self.value_and_grad(loss_fn4, x)
                 gradients_4 = self.normalize(gradients_4, x=x, bounds=model_4.bounds)
+
                 if self.att_def_avg_fourth == 'att':
                     final_gradients = weight_1*(gradients_4 + gradients_1)/2 + weight_2*gradients_2
+
                 elif self.att_def_avg_fourth == 'def':
                     final_gradients = weight_2*(gradients_4 + gradients_2)/2 + weight_1*gradients_1
+
                 else:
                     final_gradients = gradients_4+gradients_2+gradients_1
+
                 del gradients_4
             else:
                 final_gradients = weight_1*gradients_1 + weight_2*gradients_2
 
+            # TODO: remove this obselete code reference
+            """
+            # find elements of gradients_1 and gradients_2 in the same direction
             if self.follow_dir:
                 same_dir = gradients_1.sign() + gradients_2.sign()
                 same_dir = ep.abs(same_dir)/2  # get the absolute value of this mask
                 opp_dir = gradients_1.sign() - gradients_2.sign()
                 opp_dir = ep.abs(opp_dir)/2  # get the absolute value of this mask
 
-            final_gradients = final_gradients*same_dir
+            final_gradients = final_gradients * same_dir
 
+            # normalize random initialization in the opposite direction
             if self.rand_div is None:
                 rand_init = 0
             else:
@@ -222,7 +240,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
                 rand_init = ep.clip(rand_init, *model_1.bounds) / self.rand_div
 
             x = x + gradient_step_sign * stepsize * final_gradients + rand_init * opp_dir
+            """
 
+            x = x + gradient_step_sign * stepsize * final_gradients
             x = self.project(x, x0, epsilon)
             x = ep.clip(x, *model_1.bounds)
 
@@ -230,6 +250,9 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
 
         return x
 
+    # Note: OBSELETE code....no longer used
+    # TODO: Remove references to all the variables in this obselete code
+    """
     def sum_label_flip_min_max(self, x, x0, epsilon, stepsize, loss_fn1, model_1, loss_fn2, model_2,
                                gradient_step_sign=1.0, weight_1=1.0, weight_2=1.0):
 
@@ -298,6 +321,7 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             del final_gradients, gradients_2, gradients_1, same_dir, opp_dir, rand_init
 
         return x
+    """
 
     @abstractmethod
     def get_random_start(self, x0: ep.Tensor, epsilon: float) -> ep.Tensor:
