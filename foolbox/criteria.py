@@ -122,6 +122,9 @@ class Misclassification(Criterion):
         del perturbed, outputs
 
         classes = outputs_.argmax(axis=-1)
+
+        # will work only in case of binary-classification
+        # TODO: modify this assertion statement to work for multi-class scenario
         assert classes.shape == self.labels1.shape
         is_adv = classes != self.labels1
         return restore_type(is_adv)
