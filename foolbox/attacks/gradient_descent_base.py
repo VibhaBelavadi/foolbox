@@ -31,10 +31,10 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         att_def_avg_fourth: Optional[str] = None,
         weight1: Optional[float] = None,
         weight2: Optional[float] = None,
-        follow_dir: Optional[bool] = False,
-        max_val: Optional[bool] = None,
-        rand_div: Optional[bool] = None,
-        max_opp_dir: Optional[bool] = None,
+        #follow_dir: Optional[bool] = False,
+        #max_val: Optional[bool] = None,
+        #rand_div: Optional[bool] = None,
+        #max_opp_dir: Optional[bool] = None,
     ):
         self.rel_stepsize = rel_stepsize
         self.abs_stepsize = abs_stepsize
@@ -42,12 +42,12 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
         self.random_start = random_start
         self.att_def_avg_third = att_def_avg_third
         self.att_def_avg_fourth = att_def_avg_fourth
-        self.follow_dir = follow_dir
-        self.max_val = max_val
-        self.rand_div = rand_div
-        self.max_opp_dir = max_opp_dir
         self.weight1 = weight1
         self.weight2 = weight2
+        #self.follow_dir = follow_dir
+        #self.max_val = max_val
+        #self.rand_div = rand_div
+        #self.max_opp_dir = max_opp_dir
 
     def get_loss_fn(
         self, model: Model, labels: ep.Tensor
