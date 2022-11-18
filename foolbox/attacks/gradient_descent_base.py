@@ -137,6 +137,8 @@ class BaseGradientDescent(FixedEpsilonAttack, ABC):
             gradients_1 = self.normalize(gradients_1, x=x, bounds=model_1.bounds)
             gradients_2 = self.normalize(gradients_2, x=x, bounds=model_2.bounds)
 
+            #[.....] len() > 2: loop
+
             if loss_fn3 is not None and loss_fn4 is not None:
                 _, gradients_3 = self.value_and_grad(loss_fn3, x)
                 gradients_3 = self.normalize(gradients_3, x=x, bounds=model_3.bounds)
