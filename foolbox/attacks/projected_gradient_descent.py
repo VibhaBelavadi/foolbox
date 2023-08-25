@@ -22,12 +22,20 @@ class L1ProjectedGradientDescentAttack(L1BaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 50,
         random_start: bool = True,
+        att_def_avg_third: Optional[str] = None,
+        att_def_avg_fourth: Optional[str] = None,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            att_def_avg_third=att_def_avg_third,
+            att_def_avg_fourth=att_def_avg_fourth,
+            weight1=weight1,
+            weight2=weight2,
         )
 
 
@@ -48,12 +56,20 @@ class L2ProjectedGradientDescentAttack(L2BaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 50,
         random_start: bool = True,
+        att_def_avg_third: Optional[str] = None,
+        att_def_avg_fourth: Optional[str] = None,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            att_def_avg_third=att_def_avg_third,
+            att_def_avg_fourth=att_def_avg_fourth,
+            weight1=weight1,
+            weight2=weight2,
         )
 
 
@@ -74,10 +90,18 @@ class LinfProjectedGradientDescentAttack(LinfBaseGradientDescent):
         abs_stepsize: Optional[float] = None,
         steps: int = 40,
         random_start: bool = True,
+        att_def_avg_third: Optional[str] = None,
+        att_def_avg_fourth: Optional[str] = None,
+        weight1: Optional[float] = None,
+        weight2: Optional[float] = None,
     ):
         super().__init__(
             rel_stepsize=rel_stepsize,
             abs_stepsize=abs_stepsize,
             steps=steps,
             random_start=random_start,
+            att_def_avg_third=att_def_avg_third,
+            att_def_avg_fourth=att_def_avg_fourth,
+            weight1=weight1,
+            weight2=weight2,
         )

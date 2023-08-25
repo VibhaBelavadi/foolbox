@@ -13,14 +13,11 @@ from ..devutils import atleast_kd
 
 from ..distances import Distance
 
-
 T = TypeVar("T")
 CriterionType = TypeVar("CriterionType", bound=Criterion)
 
 
 # TODO: support manually specifying early_stop in __call__
-
-
 class Attack(ABC):
     @overload
     def __call__(
@@ -49,9 +46,12 @@ class Attack(ABC):
     @abstractmethod  # noqa: F811
     def __call__(
         self,
-        model: Model,
+        model1: Model,
+        model2: Model,
         inputs: T,
         criterion: Any,
+        model3: Optional[Model] = None,
+        model4: Optional[Model] = None,
         *,
         epsilons: Union[Sequence[Union[float, None]], float, None],
         **kwargs: Any,
@@ -205,7 +205,8 @@ class FixedEpsilonAttack(AttackWithDistance):
 
     @abstractmethod
     def run(
-        self, model: Model, inputs: T, criterion: Any, *, epsilon: float, **kwargs: Any
+        self, model1: Model, model2: Model, inputs:T, criterion: Any, model3: Optional[Model] = None,
+            model4: Optional[Model] = None, *, epsilon: float, **kwargs: Any,
     ) -> T:
         """Runs the attack and returns perturbed inputs.
 
@@ -241,9 +242,12 @@ class FixedEpsilonAttack(AttackWithDistance):
     @final  # noqa: F811
     def __call__(  # type: ignore
         self,
-        model: Model,
+        model1: Model,
+        model2: Model,
         inputs: T,
         criterion: Any,
+        model3: Optional[Model] = None,
+        model4: Optional[Model] = None,
         *,
         epsilons: Union[Sequence[Union[float, None]], float, None],
         **kwargs: Any,
@@ -253,7 +257,7 @@ class FixedEpsilonAttack(AttackWithDistance):
         del inputs
 
         criterion = get_criterion(criterion)
-        is_adversarial = get_is_adversarial(criterion, model)
+        is_adversarial = get_is_adversarial(criterion, model1)
 
         was_iterable = True
         if not isinstance(epsilons, Iterable):
@@ -276,7 +280,7 @@ class FixedEpsilonAttack(AttackWithDistance):
         xpcs = []
         success = []
         for epsilon in real_epsilons:
-            xp = self.run(model, x, criterion, epsilon=epsilon, **kwargs)
+            xp = self.run(model1, model2, x, criterion, model3, model4, epsilon=epsilon, **kwargs)
 
             # clip to epsilon because we don't really know what the attack returns;
             # alternatively, we could check if the perturbation is at most epsilon,

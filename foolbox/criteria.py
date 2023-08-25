@@ -44,7 +44,7 @@ to create a new criterion.
    :members:
    :special-members: __call__
 """
-from typing import TypeVar, Any
+from typing import TypeVar, Any, Optional
 from abc import ABC, abstractmethod
 import eagerpy as ep
 
@@ -101,9 +101,18 @@ class Misclassification(Criterion):
         labels: Tensor with labels of the unperturbed inputs ``(batch,)``.
     """
 
-    def __init__(self, labels: Any):
+    def __init__(self, labels1: Any, labels2: Any, labels3: Optional[Any] = None, labels4: Optional[Any] = None):
         super().__init__()
-        self.labels: ep.Tensor = ep.astensor(labels)
+        self.labels1: ep.Tensor = ep.astensor(labels1)
+        self.labels2: ep.Tensor = ep.astensor(labels2)
+        if labels3 is not None:
+            self.labels3: ep.Tensor = ep.astensor(labels3)
+        else:
+            self.labels3: ep.Tensor = None
+        if labels4 is not None:
+            self.labels4: ep.Tensor = ep.astensor(labels4)
+        else:
+            self.labels4: ep.Tensor = None
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.labels!r})"
@@ -113,8 +122,11 @@ class Misclassification(Criterion):
         del perturbed, outputs
 
         classes = outputs_.argmax(axis=-1)
-        assert classes.shape == self.labels.shape
-        is_adv = classes != self.labels
+
+        # will work only in case of binary-classification
+        # TODO: modify this assertion statement to work for multi-class scenario
+        assert classes.shape == self.labels1.shape
+        is_adv = classes != self.labels1
         return restore_type(is_adv)
 
 
